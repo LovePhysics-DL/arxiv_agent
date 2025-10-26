@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>arXiv 文献检索助手</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 2.4rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+        }
+        .config-container, .input-container, .progress-card, .summary-card, .results, .chat-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+        }
+        .config-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            justify-content: center;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #555;
+        }
+        select, input[type="number"], textarea {
+            padding: 12px 15px;
+            font-size: 1rem;
+            border: 2px solid #e4e7ef;
+            border-radius: 10px;
+            transition: border-color 0.2s ease;
+        }
+        select:focus, input[type="number"]:focus, textarea:focus {
+            outline: none;
+            border-color: #6875f5;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            resize: vertical;
+        }
+        .input-actions {
+            text-align: right;
+            margin-top: 12px;
+        }
+        button {
+            padding: 12px 28px;
+            font-size: 1rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(118,75,162,0.3);
+        }
+        .chat-container {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+        }
+        .user-message {
+            background: #667eea;
+            color: #fff;
+            margin-left: auto;
+            max-width: 80%;
+        }
+        .ai-message {
+            background: rgba(102, 126, 234, 0.12);
+            color: #4b4f75;
+            border-left: 4px solid #667eea;
+            max-width: 85%;
+        }
+        .progress-card {
+            display: none;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            background: #ebedf5;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 999px;
+            transition: width 0.25s ease;
+        }
+        .progress-detail {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        .query-chip-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .query-chip {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            color: #4c51bf;
+            font-size: 0.9rem;
+            background: rgba(102, 126, 234, 0.12);
+        }
+        .summary-card {
+            display: none;
+        }
+        .summary-card h3 {
+            margin-top: 0;
+            color: #444;
+        }
+        .summary-card p {
+            margin-bottom: 0;
+            color: #555;
+            line-height: 1.6;
+        }
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+            margin: 15px 0;
+            font-weight: 600;
+            display: none;
+        }
+        .paper {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 24px;
+            margin-bottom: 18px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .paper h3 {
+            margin-top: 0;
+        }
+        .paper a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .paper a:hover {
+            text-decoration: underline;
+        }
+        .authors {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .reason {
+            background: rgba(118, 75, 162, 0.08);
+            border-left: 4px solid #764ba2;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            color: #593a7d;
+            font-size: 0.95rem;
+        }
+        .summary {
+            color: #444;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .summary.clamp {
+            display: -webkit-box;
+            -webkit-line-clamp: 6;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .summary-toggle {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #4c51bf;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .published {
+            font-size: 0.9rem;
+            color: #888;
+            text-align: right;
+        }
+        @media (max-width: 768px) {
+            .config-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .chat-container {
+                max-height: 250px;
+            }
+            .user-message, .ai-message {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>arXiv 智能检索助手</h1>
+
+        <div class="config-container">
+            <form class="config-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="sort">排序方式</label>
+                    <select id="sort">
+                        <option value="relevance">相关度</option>
+                        <option value="submitted_date">提交时间</option>
+                        <option value="last_updated">最后更新</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="max_results">返回数量</label>
+                    <input type="number" id="max_results" min="5" max="100" value="10">
+                </div>
+            </form>
+        </div>
+
+        <div class="chat-container" id="chat-container">
+            <div class="message ai-message">
+                欢迎使用 AI 检索助手！描述你的研究需求，系统会生成多个检索式、并经过 AI 甄选后流式返回结果。
+            </div>
+        </div>
+
+        <div class="input-container">
+            <div class="form-group">
+                <label for="message">研究需求</label>
+                <textarea id="message" placeholder="例如：探索单细胞 RNA-seq 在肿瘤免疫微环境分析中的最新进展"></textarea>
+            </div>
+            <div class="input-actions">
+                <button id="send-button">开始 AI 检索</button>
+            </div>
+        </div>
+
+        <div class="progress-card" id="progress-card">
+            <div class="progress-header">
+                <span id="progress-status">等待开始…</span>
+                <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+            <div class="progress-detail" id="progress-detail">AI 将生成多个检索式并实时更新进度。</div>
+            <div class="query-chip-container" id="query-chip-container"></div>
+        </div>
+
+        <div class="summary-card" id="summary-card">
+            <h3>AI 结果概览</h3>
+            <p id="summary-text">AI 会在筛选完成后总结结果亮点。</p>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const resultsDiv = document.getElementById('results');
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('send-button');
+
+        let eventSource = null;
+        let streamActive = false;
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) {
+                showError('请输入研究需求');
+                return;
+            }
+            const sort = document.getElementById('sort').value;
+            const maxResults = document.getElementById('max_results').value;
+
+            addMessage(text, 'user');
+            messageInput.value = '';
+            hideError();
+            hideResults();
+            startStreamingSearch({ q: text, sort, max_results: maxResults });
+        }
+
+        function startStreamingSearch(params) {
+            if (!window.EventSource) {
+                showError('当前浏览器不支持流式返回');
+                return;
+            }
+            resetProgressUI();
+            streamActive = true;
+            const queryString = new URLSearchParams(params).toString();
+            if (eventSource) {
+                eventSource.close();
+            }
+            eventSource = new EventSource(`/ai-search-stream?${queryString}`);
+            eventSource.addEventListener('progress', handleProgressEvent);
+            eventSource.addEventListener('results', handleResultsEvent);
+            eventSource.addEventListener('complete', closeStream);
+            eventSource.addEventListener('failure', handleFailureEvent);
+            eventSource.onerror = () => {
+                if (streamActive) {
+                    showError('连接中断，请稍后重试');
+                    addMessage('连接意外中断', 'ai');
+                }
+                closeStream();
+            };
+        }
+
+        function handleProgressEvent(event) {
+            const data = JSON.parse(event.data);
+            updateProgress(data.percent || 0, data.message || '处理中…');
+            if (data.detail) {
+                document.getElementById('progress-detail').textContent = data.detail;
+            } else if (data.message) {
+                document.getElementById('progress-detail').textContent = data.message;
+            }
+            if (data.detail) {
+                addMessage(`${data.message || '状态更新'}：${data.detail}`, 'ai');
+            }
+            if (Array.isArray(data.queries)) {
+                renderQueryChips(data.queries);
+            }
+        }
+
+        function handleResultsEvent(event) {
+            const data = JSON.parse(event.data);
+            updateProgress(100, 'AI 筛选完成');
+            if (Array.isArray(data.queries)) {
+                renderQueryChips(data.queries);
+            }
+            addMessage('AI 已完成筛选，正在展示结果。', 'ai');
+            if (data.filter_summary) {
+                showSummary(data.filter_summary);
+            }
+            if (Array.isArray(data.reflection_notes) && data.reflection_notes.length) {
+                data.reflection_notes.forEach(note => addMessage(`AI 反思：${note}`, 'ai'));
+            }
+            if (Array.isArray(data.results)) {
+                displayResults(data.results);
+            }
+        }
+
+        function handleFailureEvent(event) {
+            const data = JSON.parse(event.data || '{}');
+            showError(data.message || 'AI 检索失败');
+            addMessage(`AI 检索失败：${data.message || '未知错误'}`, 'ai');
+            closeStream();
+        }
+
+        function closeStream() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            streamActive = false;
+        }
+
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}-message`;
+            div.textContent = text;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function resetProgressUI() {
+            const card = document.getElementById('progress-card');
+            card.style.display = 'block';
+            updateProgress(0, 'AI 正在准备多路检索…');
+            document.getElementById('progress-detail').textContent = 'AI 将生成多个检索式并实时更新进度。';
+            renderQueryChips([]);
+            document.getElementById('summary-card').style.display = 'none';
+            document.getElementById('summary-text').textContent = 'AI 会在筛选完成后总结结果亮点。';
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progress-status').textContent = message;
+            document.getElementById('progress-percent').textContent = `${percent}%`;
+            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+        }
+
+        function renderQueryChips(queries) {
+            const container = document.getElementById('query-chip-container');
+            container.innerHTML = '';
+            queries.forEach(q => {
+                const chip = document.createElement('span');
+                chip.className = 'query-chip';
+                chip.textContent = q;
+                container.appendChild(chip);
+            });
+        }
+
+        function showSummary(text) {
+            const card = document.getElementById('summary-card');
+            card.style.display = 'block';
+            document.getElementById('summary-text').textContent = text;
+        }
+
+        function displayResults(papers) {
+            resultsDiv.innerHTML = '';
+            if (!Array.isArray(papers) || papers.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'paper';
+                empty.textContent = '未筛选到满足条件的文献。';
+                resultsDiv.appendChild(empty);
+                return;
+            }
+
+            papers.forEach(paper => {
+                const card = document.createElement('div');
+                card.className = 'paper';
+
+                const title = document.createElement('h3');
+                const link = document.createElement('a');
+                link.href = paper.link || '#';
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = paper.title || '未命名文献';
+                title.appendChild(link);
+
+                const authors = document.createElement('div');
+                authors.className = 'authors';
+                const authorList = Array.isArray(paper.authors) ? paper.authors.join(', ') : '未知作者';
+                authors.textContent = `作者: ${authorList}`;
+
+                let reasonDiv = null;
+                if (paper.reason) {
+                    reasonDiv = document.createElement('div');
+                    reasonDiv.className = 'reason';
+                    reasonDiv.textContent = `AI 筛选理由：${paper.reason}`;
+                }
+
+                const summary = document.createElement('div');
+                summary.className = 'summary clamp';
+                summary.textContent = paper.summary || '';
+
+                const toggle = document.createElement('button');
+                toggle.className = 'summary-toggle';
+                toggle.textContent = '展开摘要';
+                toggle.addEventListener('click', () => {
+                    const isClamped = summary.classList.contains('clamp');
+                    summary.classList.toggle('clamp');
+                    toggle.textContent = isClamped ? '收起摘要' : '展开摘要';
+                });
+
+                const meta = document.createElement('div');
+                meta.className = 'published';
+                const infoParts = [];
+                if (paper.published) infoParts.push(`发布日期: ${paper.published}`);
+                if (paper.primary_category) infoParts.push(`分类: ${paper.primary_category}`);
+                const infoText = infoParts.join(' ｜ ');
+                if (infoText) {
+                    meta.appendChild(document.createTextNode(infoText));
+                }
+                if (paper.pdf_url) {
+                    if (infoText) {
+                        meta.appendChild(document.createTextNode(' ｜ '));
+                    }
+                    const pdfLink = document.createElement('a');
+                    pdfLink.href = paper.pdf_url;
+                    pdfLink.target = '_blank';
+                    pdfLink.rel = 'noopener noreferrer';
+                    pdfLink.textContent = 'PDF';
+                    meta.appendChild(pdfLink);
+                }
+
+                card.appendChild(title);
+                card.appendChild(authors);
+                if (reasonDiv) {
+                    card.appendChild(reasonDiv);
+                }
+                card.appendChild(summary);
+                card.appendChild(toggle);
+                card.appendChild(meta);
+
+                resultsDiv.appendChild(card);
+            });
+        }
+
+        function hideResults() {
+            resultsDiv.innerHTML = '';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
